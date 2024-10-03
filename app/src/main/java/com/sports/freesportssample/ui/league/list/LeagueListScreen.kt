@@ -2,20 +2,16 @@ package com.sports.freesportssample.ui.league.list
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +26,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,9 +33,12 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.sports.freesportssample.R
 import com.sports.freesportssample.ui.common.UiErrorMessage
+import com.sports.freesportssample.ui.league.list.components.SearchErrorView
+import com.sports.freesportssample.ui.league.list.components.SearchLoaderView
+import com.sports.freesportssample.ui.league.list.components.SearchSuggestionsView
+import com.sports.freesportssample.ui.league.list.components.SearchTeamsContentView
 import com.sports.freesportssample.ui.league.list.model.LeagueUi
 import com.sports.freesportssample.ui.theme.FreeSportsSampleTheme
-import com.sports.freesportssample.ui.theme.Purple40
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 
@@ -50,7 +48,7 @@ fun LeagueListScreen(
     modifier: Modifier = Modifier,
     uiState: LeagueListUiState,
     onLeagueSelected: (String) -> Unit,
-    onSearchCleared:() -> Unit
+    onSearchCleared: () -> Unit
 ) {
     var searchText by rememberSaveable { mutableStateOf("") }
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -101,77 +99,39 @@ fun LeagueListScreen(
                 expanded = expanded,
                 onExpandedChange = { expanded = it }
             ) {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(16.dp)
-                ) {
-                    items(
-                        count = filteredItems.size,
-                        key = { index -> filteredItems[index].id }
-                    ) { index ->
-                        val league = filteredItems[index]
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onLeagueSelected(league.name)
-                                    expanded = false
-                                    searchText = league.name
-                                },
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(modifier = Modifier.padding(16.dp), text = league.name)
-                        }
+                SearchSuggestionsView(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    filteredItems = filteredItems,
+                    onLeagueSelected = {
+                        expanded = false
+                        searchText = it
+                        onLeagueSelected(it)
                     }
-                }
+                )
             }
         },
         content = { paddingValues ->
             uiState.errorMessage?.apply {
-                Box(
+                SearchErrorView(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = stringResource(id = R.string.general_error, message ?: ""))
-                }
+                        .padding(paddingValues),
+                    message = message
+                )
             } ?: run {
                 if (uiState.loading) {
-                    Box(
+                    SearchLoaderView(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = modifier.size(24.dp),
-                            color = Purple40,
-                            strokeWidth = 2.dp
-                        )
-                    }
+                            .padding(paddingValues),
+                    )
                 } else {
-                    LazyVerticalGrid(
+                    SearchTeamsContentView(
                         modifier = Modifier.padding(paddingValues),
-                        columns = GridCells.Adaptive(minSize = 128.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(16.dp)
-                    ) {
-                        items(
-                            count = uiState.teams.size,
-                            key = { index -> uiState.teams[index].id }
-                        ) { index ->
-                            val team = uiState.teams[index]
-                            Row(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                AsyncImage(
-                                    model = team.badge,
-                                    contentDescription = null,
-                                )
-                            }
-                        }
-                    }
+                        teams = uiState.teams
+                    )
                 }
             }
         })
