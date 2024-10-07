@@ -4,7 +4,7 @@ import com.sports.freesportssample.domain.model.Team
 import com.sports.freesportssample.domain.repository.LeaguesRepository
 import javax.inject.Inject
 
-class GetTeamsUseCaseByLeague @Inject constructor(
+class GetTeamsByLeagueUseCase @Inject constructor(
     private val leaguesRepository: LeaguesRepository
 ) {
     suspend operator fun invoke(leagueName: String): List<Team>? =

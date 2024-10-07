@@ -23,12 +23,15 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 interface DataModule {
     @Binds
+    @Singleton
     fun bindsCollectionRepository(impl: DefaultLeaguesRepository): LeaguesRepository
 
     @Binds
+    @Singleton
     fun bindsRemoteDataSource(impl: DefaultRemoteLeaguesDataSource): RemoteLeaguesDataSource
 
     @Binds
+    @Singleton
     fun bindsCoroutineDispatchers(impl: DefaultCoroutineDispatchers): CoroutineDispatchers
 
     @Module

@@ -13,7 +13,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-class GetTeamsUseCaseByLeagueTest {
+class GetTeamsByLeagueUseCaseTest {
     @get:Rule
     val dispatchersRule = CoroutineDispatcherRule()
 
@@ -28,10 +28,10 @@ class GetTeamsUseCaseByLeagueTest {
     @Test
     fun `given league when has teams return filtered data`() {
         coEvery { leaguesRepository.getTeams(leagueName = any()) }.returns(mockTeams)
-        val getTeamsUseCaseByLeague = GetTeamsUseCaseByLeague(leaguesRepository)
+        val getTeamsByLeagueUseCase = GetTeamsByLeagueUseCase(leaguesRepository)
 
         runTest(dispatchersRule.testDispatcher) {
-            val result = getTeamsUseCaseByLeague("French Ligue 1")
+            val result = getTeamsByLeagueUseCase("French Ligue 1")
 
             Assert.assertTrue(result!!.size == 2)
             Assert.assertTrue(result[0].id == 2)

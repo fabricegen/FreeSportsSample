@@ -1,42 +1,64 @@
 package com.sports.freesportssample.ui.league.list
 
-import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sports.freesportssample.data.common.CoroutineDispatchers
 import com.sports.freesportssample.domain.model.League
 import com.sports.freesportssample.domain.model.Team
-import com.sports.freesportssample.domain.usecase.GetLeaguesUseCase
-import com.sports.freesportssample.domain.usecase.GetTeamsUseCaseByLeague
+import com.sports.freesportssample.domain.usecase.FetchLeaguesUseCase
+import com.sports.freesportssample.domain.usecase.GetLeaguesByNameUseCase
+import com.sports.freesportssample.domain.usecase.GetTeamsByLeagueUseCase
 import com.sports.freesportssample.ui.common.UiErrorMessage
 import com.sports.freesportssample.ui.league.list.model.LeagueUi
 import com.sports.freesportssample.ui.league.list.model.TeamUi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+private const val SEARCH_QUERY = "SEARCH_QUERY"
+
 @HiltViewModel
 class LeagueListViewModel @Inject constructor(
-    private val getLeaguesUseCase: GetLeaguesUseCase,
-    private val getTeamsUseCaseByLeague: GetTeamsUseCaseByLeague,
+    private val savedStateHandle: SavedStateHandle,
+    private val fetchLeaguesUseCase: FetchLeaguesUseCase,
+    private val getLeaguesByNameUseCase: GetLeaguesByNameUseCase,
+    private val getTeamsByLeagueUseCase: GetTeamsByLeagueUseCase,
     private val dispatchers: CoroutineDispatchers
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LeagueListUiState())
     val uiState = _uiState as StateFlow<LeagueListUiState>
 
     init {
+        fetchLeagues()
+        initSearchQueries()
+    }
+
+    private fun initSearchQueries() {
+        viewModelScope.launch(context = dispatchers.default) {
+            savedStateHandle.getStateFlow<String?>(SEARCH_QUERY, null)
+                .filterNotNull()
+                .collectLatest { searchText ->
+                    val leagues = getLeaguesByNameUseCase(searchText)
+                    _uiState.value = _uiState.value.copy(
+                        leagues = leagues.toLeaguesUi().toPersistentList()
+                    )
+                }
+        }
+    }
+
+    private fun fetchLeagues() {
         viewModelScope.launch(context = dispatchers.default) {
             try {
-                _uiState.value = _uiState.value.copy(
-                    leagues = getLeaguesUseCase()
-                        .toLeaguesUi()
-                        .toImmutableList()
-                )
+                fetchLeaguesUseCase()
             } catch (e: Exception) {
                 Timber.e(e, "Unexpected error happened")
                 _uiState.value = _uiState.value.copy(
@@ -51,7 +73,7 @@ class LeagueListViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(loading = true)
             try {
                 _uiState.value = _uiState.value.copy(
-                    teams = getTeamsUseCaseByLeague(leagueName)
+                    teams = getTeamsByLeagueUseCase(leagueName)
                         ?.toTeamsUi()
                         ?.toImmutableList() ?: persistentListOf(),
                     loading = false
@@ -64,6 +86,10 @@ class LeagueListViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun searchLeagues(searchText: String) {
+        savedStateHandle[SEARCH_QUERY] = searchText
     }
 
     fun clearTeams() {

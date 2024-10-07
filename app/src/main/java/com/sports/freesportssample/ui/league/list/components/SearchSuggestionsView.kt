@@ -17,7 +17,7 @@ import kotlinx.collections.immutable.ImmutableList
 @Composable
 fun SearchSuggestionsView(
     modifier: Modifier,
-    filteredItems: ImmutableList<LeagueUi>,
+    leagues: ImmutableList<LeagueUi>,
     onLeagueSelected: (String) -> Unit
 ) {
     LazyColumn(
@@ -26,10 +26,10 @@ fun SearchSuggestionsView(
         contentPadding = PaddingValues(16.dp)
     ) {
         items(
-            count = filteredItems.size,
-            key = { index -> filteredItems[index].id }
+            count = leagues.size,
+            key = { index -> leagues[index].id }
         ) { index ->
-            val league = filteredItems[index]
+            val league = leagues[index]
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

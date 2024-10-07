@@ -1,18 +1,19 @@
 package com.sports.freesportssample.ui.league
 
+import androidx.lifecycle.SavedStateHandle
 import com.sports.freesportssample.data.common.CoroutineDispatchers
 import com.sports.freesportssample.domain.model.League
 import com.sports.freesportssample.test.CoroutineDispatcherRule
 import com.sports.freesportssample.domain.model.Team
-import com.sports.freesportssample.domain.repository.LeaguesRepository
-import com.sports.freesportssample.domain.usecase.GetLeaguesUseCase
-import com.sports.freesportssample.domain.usecase.GetTeamsUseCaseByLeague
+import com.sports.freesportssample.domain.usecase.FetchLeaguesUseCase
+import com.sports.freesportssample.domain.usecase.GetLeaguesByNameUseCase
+import com.sports.freesportssample.domain.usecase.GetTeamsByLeagueUseCase
 import com.sports.freesportssample.ui.league.list.LeagueListViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
-import io.mockk.verifyOrder
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Before
@@ -24,40 +25,63 @@ class LeagueListViewModelTest {
     val dispatchersRule = CoroutineDispatcherRule()
 
     @MockK
-    private lateinit var getTeamsUseCaseByLeague: GetTeamsUseCaseByLeague
+    private lateinit var getTeamsByLeagueUseCase: GetTeamsByLeagueUseCase
 
     @MockK
-    private lateinit var getLeaguesUseCase: GetLeaguesUseCase
+    private lateinit var getLeaguesByNameUseCase: GetLeaguesByNameUseCase
+
+    @MockK(relaxed = true)
+    private lateinit var fetchLeaguesUseCase: FetchLeaguesUseCase
 
     @MockK
     private lateinit var coroutineDispatchers: CoroutineDispatchers
 
+    @MockK
+    private lateinit var savedStateHandle: SavedStateHandle
+
     @Before
     fun setup() {
         MockKAnnotations.init(this)
+
+        coEvery { coroutineDispatchers.default }.returns(dispatchersRule.testDispatcher)
+        coEvery { getLeaguesByNameUseCase(any()) }.returns(mockLeagues)
     }
 
     @Test
     fun `given leagues when init then return leagues`() {
-        coEvery { getLeaguesUseCase() }.returns(mockLeagues)
-        coEvery { coroutineDispatchers.default }.returns(dispatchersRule.testDispatcher)
+        val mockSavedStateFlow = MutableStateFlow<String?>(null)
+        mockSavedStateFlow.value = "French Ligue 1"
+        coEvery { savedStateHandle.getStateFlow<String?>(any(), null) }.returns(mockSavedStateFlow)
 
-        val leagueListViewModel = LeagueListViewModel(getLeaguesUseCase, getTeamsUseCaseByLeague, coroutineDispatchers)
+        val leagueListViewModel = LeagueListViewModel(
+            savedStateHandle,
+            fetchLeaguesUseCase,
+            getLeaguesByNameUseCase,
+            getTeamsByLeagueUseCase,
+            coroutineDispatchers
+        )
 
         runTest(dispatchersRule.testDispatcher) {
             Assert.assertTrue(leagueListViewModel.uiState.value.leagues.isNotEmpty())
 
-            coVerify { getLeaguesUseCase() }
+            coVerify { fetchLeaguesUseCase() }
         }
     }
 
     @Test
     fun `given leagues when search teams then return filtered data`() {
-        coEvery { getLeaguesUseCase() }.returns(mockLeagues)
-        coEvery { getTeamsUseCaseByLeague(any()) }.returns(mockTeams)
-        coEvery { coroutineDispatchers.default }.returns(dispatchersRule.testDispatcher)
+        coEvery { getTeamsByLeagueUseCase(any()) }.returns(mockTeams)
+        val mockSavedStateFlow = MutableStateFlow<String?>(null)
+        mockSavedStateFlow.value = "French Ligue 1"
+        coEvery { savedStateHandle.getStateFlow<String?>(any(), null) }.returns(mockSavedStateFlow)
 
-        val leagueListViewModel = LeagueListViewModel(getLeaguesUseCase, getTeamsUseCaseByLeague, coroutineDispatchers)
+        val leagueListViewModel = LeagueListViewModel(
+            savedStateHandle,
+            fetchLeaguesUseCase,
+            getLeaguesByNameUseCase,
+            getTeamsByLeagueUseCase,
+            coroutineDispatchers
+        )
 
         runTest(dispatchersRule.testDispatcher) {
             leagueListViewModel.searchTeams("French Ligue 1")
@@ -65,18 +89,25 @@ class LeagueListViewModelTest {
             Assert.assertTrue(leagueListViewModel.uiState.value.leagues.isNotEmpty())
             Assert.assertTrue(leagueListViewModel.uiState.value.teams.isNotEmpty())
 
-            coVerify { getLeaguesUseCase() }
-            coVerify { getTeamsUseCaseByLeague(any()) }
+            coVerify { fetchLeaguesUseCase() }
+            coVerify { getTeamsByLeagueUseCase(any()) }
         }
     }
 
     @Test
     fun `given leagues when search teams and error happened then return error message to user`() {
-        coEvery { getLeaguesUseCase() }.returns(mockLeagues)
-        coEvery { getTeamsUseCaseByLeague(any()) }.throws(RuntimeException("Error happened"))
-        coEvery { coroutineDispatchers.default }.returns(dispatchersRule.testDispatcher)
+        coEvery { getTeamsByLeagueUseCase(any()) }.throws(RuntimeException("Error happened"))
+        val mockSavedStateFlow = MutableStateFlow<String?>(null)
+        mockSavedStateFlow.value = "French Ligue 1"
+        coEvery { savedStateHandle.getStateFlow<String?>(any(), null) }.returns(mockSavedStateFlow)
 
-        val leagueListViewModel = LeagueListViewModel(getLeaguesUseCase, getTeamsUseCaseByLeague, coroutineDispatchers)
+        val leagueListViewModel = LeagueListViewModel(
+            savedStateHandle,
+            fetchLeaguesUseCase,
+            getLeaguesByNameUseCase,
+            getTeamsByLeagueUseCase,
+            coroutineDispatchers
+        )
 
         runTest(dispatchersRule.testDispatcher) {
             leagueListViewModel.searchTeams("French Ligue 1")
@@ -84,18 +115,25 @@ class LeagueListViewModelTest {
             Assert.assertTrue(leagueListViewModel.uiState.value.leagues.isNotEmpty())
             Assert.assertNotNull(leagueListViewModel.uiState.value.errorMessage)
 
-            coVerify { getLeaguesUseCase() }
-            coVerify { getTeamsUseCaseByLeague(any()) }
+            coVerify { fetchLeaguesUseCase() }
+            coVerify { getTeamsByLeagueUseCase(any()) }
         }
     }
 
     @Test
     fun `given search completed when clear search then clear teams and error`() {
-        coEvery { getLeaguesUseCase() }.returns(mockLeagues)
-        coEvery { getTeamsUseCaseByLeague(any()) }.returns(mockTeams)
-        coEvery { coroutineDispatchers.default }.returns(dispatchersRule.testDispatcher)
+        coEvery { getTeamsByLeagueUseCase(any()) }.returns(mockTeams)
+        val mockSavedStateFlow = MutableStateFlow<String?>(null)
+        mockSavedStateFlow.value = "French Ligue 1"
+        coEvery { savedStateHandle.getStateFlow<String?>(any(), null) }.returns(mockSavedStateFlow)
 
-        val leagueListViewModel = LeagueListViewModel(getLeaguesUseCase, getTeamsUseCaseByLeague, coroutineDispatchers)
+        val leagueListViewModel = LeagueListViewModel(
+            savedStateHandle,
+            fetchLeaguesUseCase,
+            getLeaguesByNameUseCase,
+            getTeamsByLeagueUseCase,
+            coroutineDispatchers
+        )
 
         runTest(dispatchersRule.testDispatcher) {
             leagueListViewModel.searchTeams("French Ligue 1")

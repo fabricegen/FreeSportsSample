@@ -3,8 +3,6 @@ package com.sports.freesportssample.data.repository
 import com.sports.freesportssample.domain.model.League
 import com.sports.freesportssample.test.CoroutineDispatcherRule
 import com.sports.freesportssample.domain.model.Team
-import com.sports.freesportssample.domain.repository.LeaguesRepository
-import com.sports.freesportssample.domain.usecase.GetTeamsUseCaseByLeague
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -33,9 +31,9 @@ class DefaultLeaguesRepositoryTest {
         val leaguesRepository = DefaultLeaguesRepository(remoteLeaguesDataSource)
 
         runTest(dispatchersRule.testDispatcher) {
-            val result = leaguesRepository.getLeagues()
+            leaguesRepository.fetchLeagues()
 
-            Assert.assertTrue(result.size == 4)
+            Assert.assertTrue(leaguesRepository.leagues.size == 4)
 
             coVerify { remoteLeaguesDataSource.getLeagues() }
         }
